@@ -153,6 +153,11 @@ func ImageDrawPixel(dst *Image, posX int32, posY int32, col color.RGBA) {
 	wasm.Free(fl...)
 }
 
+func Normal3f(x float32, y float32, z float32) {
+	_, fl := normal3f.Call(x, y, z)
+	wasm.Free(fl...)
+}
+
 func SetClipPlanes(nearPlane, farPlane float64) {
 	_, fl := setClipPlanes.Call(nearPlane, farPlane)
 	wasm.Free(fl...)
@@ -205,5 +210,10 @@ func Vertex3f(x float32, y float32, z float32) {
 
 func Color4f(x float32, y float32, z float32, w float32) {
 	_, fl := color4f.Call(x, y, z, w)
+	wasm.Free(fl...)
+}
+
+func Normal3f(x float32, y float32, z float32) {
+	_, fl := normal3f.Call(x, y, z)
 	wasm.Free(fl...)
 }

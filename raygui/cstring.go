@@ -3,7 +3,7 @@
 package raygui
 
 import (
-	"github.com/BrownNPC/Raylib-Go-Wasm/wasm-runtime"
+	"github.com/ThreeIdiotsOneGameJam/Raylib-Go-Wasm/wasm-runtime"
 )
 
 func makeStringArray(size int) wasm.Ptr {

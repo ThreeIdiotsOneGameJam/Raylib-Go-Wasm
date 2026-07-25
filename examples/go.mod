@@ -1,4 +1,4 @@
-module github.com/BrownNPC/Raylib-Go-Wasm/examples
+module github.com/ThreeIdiotsOneGameJam/Raylib-Go-Wasm/examples
 
 go 1.26.1
 
@@ -8,13 +8,13 @@ require (
 )
 
 replace (
-	github.com/BrownNPC/Raylib-Go-Wasm/wasm-runtime => ../wasm-runtime
+	github.com/ThreeIdiotsOneGameJam/Raylib-Go-Wasm/wasm-runtime => ../wasm-runtime
 
 	github.com/gen2brain/raylib-go/raygui => ../raygui
 	github.com/gen2brain/raylib-go/raylib => ../raylib
 )
 
 require (
-	github.com/BrownNPC/Raylib-Go-Wasm/wasm-runtime v0.0.0-20260421110350-7c24b2d5e6d3 // indirect
+	github.com/ThreeIdiotsOneGameJam/Raylib-Go-Wasm/wasm-runtime v0.0.0-20260421110350-7c24b2d5e6d3 // indirect
 	github.com/BrownNPC/wasm-ffi-go v1.3.0 // indirect
 )

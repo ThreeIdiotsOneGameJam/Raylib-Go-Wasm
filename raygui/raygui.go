@@ -5,7 +5,7 @@ package raygui
 import (
 	"image/color"
 
-	wasm "github.com/BrownNPC/Raylib-Go-Wasm/wasm-runtime"
+	wasm "github.com/ThreeIdiotsOneGameJam/Raylib-Go-Wasm/wasm-runtime"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 

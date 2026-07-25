@@ -5,8 +5,8 @@ import (
 	"image/color"
 	"unsafe"
 
-	wasmrt "github.com/BrownNPC/Raylib-Go-Wasm/wasm-runtime"
 	wasm "github.com/BrownNPC/wasm-ffi-go"
+	wasmrt "github.com/ThreeIdiotsOneGameJam/Raylib-Go-Wasm/wasm-runtime"
 )
 
 var closeWindow = wasm.Proc("CloseWindow")
@@ -513,6 +513,7 @@ var setTexture = wasm.Proc("rlSetTexture")
 var texCoord2f = wasm.Proc("rlTexCoord2f")
 var vertex3f = wasm.Proc("rlVertex3f")
 var color4f = wasm.Proc("rlColor4f")
+var normal3f = wasm.Proc("rlNormal3f")
 
 // CloseWindow - Close window and unload OpenGL context
 func CloseWindow() {

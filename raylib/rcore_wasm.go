@@ -513,6 +513,7 @@ var setTexture = wasm.Proc("rlSetTexture")
 var texCoord2f = wasm.Proc("rlTexCoord2f")
 var vertex3f = wasm.Proc("rlVertex3f")
 var color4f = wasm.Proc("rlColor4f")
+var normal3f = wasm.Proc("rlNormal3f")
 
 // CloseWindow - Close window and unload OpenGL context
 func CloseWindow() {

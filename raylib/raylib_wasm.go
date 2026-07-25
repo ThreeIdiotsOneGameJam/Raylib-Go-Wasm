@@ -207,3 +207,8 @@ func Color4f(x float32, y float32, z float32, w float32) {
 	_, fl := color4f.Call(x, y, z, w)
 	wasm.Free(fl...)
 }
+
+func Normal3f(x float32, y float32, z float32) {
+	_, fl := normal3f.Call(x, y, z)
+	wasm.Free(fl...)
+}

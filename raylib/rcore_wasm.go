@@ -1927,13 +1927,25 @@ func DrawTriangleLines(v1 Vector2, v2 Vector2, v3 Vector2, col color.RGBA) {
 
 // DrawTriangleFan - Draw a triangle fan defined by points (first vertex is the center)
 func DrawTriangleFan(points []Vector2, col color.RGBA) {
-	_, fl := drawTriangleFan.Call(points, wasm.Struct(col))
+	if len(points) == 0 {
+		return
+	}
+	cPoints, free := wasmrt.CopySliceToC(points)
+	defer free()
+
+	_, fl := drawTriangleFan.Call(cPoints, int32(len(points)), wasm.Struct(col))
 	wasm.Free(fl...)
 }
 
 // DrawTriangleStrip - Draw a triangle strip defined by points
 func DrawTriangleStrip(points []Vector2, col color.RGBA) {
-	_, fl := drawTriangleStrip.Call(points, wasm.Struct(col))
+	if len(points) == 0 {
+		return
+	}
+	cPoints, free := wasmrt.CopySliceToC(points)
+	defer free()
+
+	_, fl := drawTriangleStrip.Call(cPoints, int32(len(points)), wasm.Struct(col))
 	wasm.Free(fl...)
 }
 

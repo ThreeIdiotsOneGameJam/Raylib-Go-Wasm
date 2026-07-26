@@ -9,6 +9,28 @@ import (
 	wasmrt "github.com/ThreeIdiotsOneGameJam/Raylib-Go-Wasm/wasm-runtime"
 )
 
+// Go's wasm pointers are 64-bit, while the raylib module was compiled with
+// Emscripten's 32-bit pointers. Keep pointer-bearing C structs in their native
+// layout while crossing the module boundary.
+type shaderWASM struct {
+	ID   uint32
+	Locs wasmrt.Ptr
+}
+
+func shaderToWASM(shader Shader) shaderWASM {
+	return shaderWASM{
+		ID:   shader.ID,
+		Locs: wasmrt.Ptr(uintptr(unsafe.Pointer(shader.Locs))),
+	}
+}
+
+func shaderFromWASM(shader shaderWASM) Shader {
+	return Shader{
+		ID:   shader.ID,
+		Locs: (*int32)(unsafe.Pointer(uintptr(shader.Locs))),
+	}
+}
+
 var closeWindow = wasm.Proc("CloseWindow")
 var isWindowReady = wasm.Func[bool]("IsWindowReady")
 var isWindowFullscreen = wasm.Func[bool]("IsWindowFullscreen")
@@ -68,8 +90,8 @@ var beginVrStereoMode = wasm.Proc("BeginVrStereoMode")
 var endVrStereoMode = wasm.Proc("EndVrStereoMode")
 var loadVrStereoConfig = wasm.Func[VrStereoConfig]("LoadVrStereoConfig")
 var unloadVrStereoConfig = wasm.Proc("UnloadVrStereoConfig")
-var loadShader = wasm.Func[Shader]("LoadShader")
-var loadShaderFromMemory = wasm.Func[Shader]("LoadShaderFromMemory")
+var loadShader = wasm.Func[shaderWASM]("LoadShader")
+var loadShaderFromMemory = wasm.Func[shaderWASM]("LoadShaderFromMemory")
 var isShaderValid = wasm.Func[bool]("IsShaderValid")
 var getShaderLocation = wasm.Func[int32]("GetShaderLocation")
 var getShaderLocationAttrib = wasm.Func[int32]("GetShaderLocationAttrib")
@@ -233,7 +255,7 @@ var loadImage = wasm.Func[*Image]("LoadImage")
 var loadImageRaw = wasm.Func[*Image]("LoadImageRaw")
 var loadImageAnim = wasm.Func[*Image]("LoadImageAnim")
 var loadImageAnimFromMemory = wasm.Func[*Image]("LoadImageAnimFromMemory")
-var loadImageFromScreen = wasm.Func[*Image]("LoadImageFromScreen")
+var loadImageFromScreen = wasm.Func[Image]("LoadImageFromScreen")
 var isImageValid = wasm.Func[bool]("IsImageValid")
 var unloadImage = wasm.Proc("UnloadImage")
 var exportImage = wasm.Func[bool]("ExportImage")
@@ -919,7 +941,7 @@ func EndTextureMode() {
 
 // BeginShaderMode - Begin custom shader drawing
 func BeginShaderMode(shader Shader) {
-	_, fl := beginShaderMode.Call(wasm.Struct(shader))
+	_, fl := beginShaderMode.Call(wasm.Struct(shaderToWASM(shader)))
 	wasm.Free(fl...)
 }
 
@@ -982,7 +1004,7 @@ func UnloadVrStereoConfig(config VrStereoConfig) {
 // LoadShader - Load shader from files and bind default locations
 func LoadShader(vsFileName string, fsFileName string) Shader {
 	ret, fl := loadShader.Call(vsFileName, fsFileName)
-	v := wasm.ReadStruct[Shader](ret)
+	v := shaderFromWASM(wasm.ReadStruct[shaderWASM](ret))
 	wasm.Free(fl...)
 	return v
 }
@@ -990,14 +1012,14 @@ func LoadShader(vsFileName string, fsFileName string) Shader {
 // LoadShaderFromMemory - Load shader from code strings and bind default locations
 func LoadShaderFromMemory(vsCode string, fsCode string) Shader {
 	ret, fl := loadShaderFromMemory.Call(vsCode, fsCode)
-	v := wasm.ReadStruct[Shader](ret)
+	v := shaderFromWASM(wasm.ReadStruct[shaderWASM](ret))
 	wasm.Free(fl...)
 	return v
 }
 
 // IsShaderValid - Check if a shader is valid (loaded on GPU)
 func IsShaderValid(shader Shader) bool {
-	ret, fl := isShaderValid.Call(wasm.Struct(shader))
+	ret, fl := isShaderValid.Call(wasm.Struct(shaderToWASM(shader)))
 	v := wasm.Boolean(ret)
 	wasm.Free(fl...)
 	return v
@@ -1005,7 +1027,7 @@ func IsShaderValid(shader Shader) bool {
 
 // GetShaderLocation - Get shader uniform location
 func GetShaderLocation(shader Shader, uniformName string) int32 {
-	ret, fl := getShaderLocation.Call(wasm.Struct(shader), uniformName)
+	ret, fl := getShaderLocation.Call(wasm.Struct(shaderToWASM(shader)), uniformName)
 	v := wasm.Numeric[int32](ret)
 	wasm.Free(fl...)
 	return v
@@ -1013,7 +1035,7 @@ func GetShaderLocation(shader Shader, uniformName string) int32 {
 
 // GetShaderLocationAttrib - Get shader attribute location
 func GetShaderLocationAttrib(shader Shader, attribName string) int32 {
-	ret, fl := getShaderLocationAttrib.Call(wasm.Struct(shader), attribName)
+	ret, fl := getShaderLocationAttrib.Call(wasm.Struct(shaderToWASM(shader)), attribName)
 	v := wasm.Numeric[int32](ret)
 	wasm.Free(fl...)
 	return v
@@ -1021,31 +1043,43 @@ func GetShaderLocationAttrib(shader Shader, attribName string) int32 {
 
 // SetShaderValue - Set shader uniform value
 func SetShaderValue(shader Shader, locIndex int32, value []float32, uniformType ShaderUniformDataType) {
-	_, fl := setShaderValue.Call(wasm.Struct(shader), locIndex, value, uniformType)
+	if len(value) == 0 {
+		return
+	}
+	cValue, free := wasmrt.CopySliceToC(value)
+	defer free()
+
+	_, fl := setShaderValue.Call(wasm.Struct(shaderToWASM(shader)), locIndex, cValue, uniformType)
 	wasm.Free(fl...)
 }
 
 // SetShaderValueV - Set shader uniform value vector
 func SetShaderValueV(shader Shader, locIndex int32, value []float32, uniformType ShaderUniformDataType, count int32) {
-	_, fl := setShaderValueV.Call(wasm.Struct(shader), locIndex, value, uniformType, count)
+	if len(value) == 0 {
+		return
+	}
+	cValue, free := wasmrt.CopySliceToC(value)
+	defer free()
+
+	_, fl := setShaderValueV.Call(wasm.Struct(shaderToWASM(shader)), locIndex, cValue, uniformType, count)
 	wasm.Free(fl...)
 }
 
 // SetShaderValueMatrix - Set shader uniform value (matrix 4x4)
 func SetShaderValueMatrix(shader Shader, locIndex int32, mat Matrix) {
-	_, fl := setShaderValueMatrix.Call(wasm.Struct(shader), locIndex, wasm.Struct(mat))
+	_, fl := setShaderValueMatrix.Call(wasm.Struct(shaderToWASM(shader)), locIndex, wasm.Struct(mat))
 	wasm.Free(fl...)
 }
 
 // SetShaderValueTexture - Set shader uniform value for texture (sampler2d)
 func SetShaderValueTexture(shader Shader, locIndex int32, texture Texture2D) {
-	_, fl := setShaderValueTexture.Call(wasm.Struct(shader), locIndex, wasm.Struct(texture))
+	_, fl := setShaderValueTexture.Call(wasm.Struct(shaderToWASM(shader)), locIndex, wasm.Struct(texture))
 	wasm.Free(fl...)
 }
 
 // UnloadShader - Unload shader from GPU memory (VRAM)
 func UnloadShader(shader Shader) {
-	_, fl := unloadShader.Call(wasm.Struct(shader))
+	_, fl := unloadShader.Call(wasm.Struct(shaderToWASM(shader)))
 	wasm.Free(fl...)
 }
 
@@ -2171,13 +2205,18 @@ func LoadImageFromTexture(texture Texture2D) *Image {
 
 // LoadImageFromScreen - Load image from screen buffer and (screenshot)
 func LoadImageFromScreen() *Image {
-	var zero *Image
-	return zero
+	ret, fl := loadImageFromScreen.Call()
+	v := wasm.ReadStruct[Image](ret)
+	wasm.Free(fl...)
+	return &v
 }
 
 // IsImageValid - Check if an image is valid (data and parameters)
 func IsImageValid(image *Image) bool {
-	ret, fl := isImageValid.Call(image)
+	if image == nil {
+		return false
+	}
+	ret, fl := isImageValid.Call(wasm.Struct(*image))
 	v := wasm.Boolean(ret)
 	wasm.Free(fl...)
 	return v
@@ -2185,7 +2224,10 @@ func IsImageValid(image *Image) bool {
 
 // UnloadImage - Unload image from CPU memory (RAM)
 func UnloadImage(image *Image) {
-	_, fl := unloadImage.Call(image)
+	if image == nil {
+		return
+	}
+	_, fl := unloadImage.Call(wasm.Struct(*image))
 	wasm.Free(fl...)
 }
 
@@ -2719,13 +2761,25 @@ func UnloadRenderTexture(target RenderTexture2D) {
 
 // UpdateTexture - Update GPU texture with new data
 func UpdateTexture(texture Texture2D, pixels []color.RGBA) {
-	_, fl := updateTexture.Call(wasm.Struct(texture), pixels)
+	if len(pixels) == 0 {
+		return
+	}
+	cPixels, free := wasmrt.CopySliceToC(pixels)
+	defer free()
+
+	_, fl := updateTexture.Call(wasm.Struct(texture), cPixels)
 	wasm.Free(fl...)
 }
 
 // UpdateTextureRec - Update GPU texture rectangle with new data
 func UpdateTextureRec(texture Texture2D, rec Rectangle, pixels []color.RGBA) {
-	_, fl := updateTextureRec.Call(wasm.Struct(texture), wasm.Struct(rec), pixels)
+	if len(pixels) == 0 {
+		return
+	}
+	cPixels, free := wasmrt.CopySliceToC(pixels)
+	defer free()
+
+	_, fl := updateTextureRec.Call(wasm.Struct(texture), wasm.Struct(rec), cPixels)
 	wasm.Free(fl...)
 }
 

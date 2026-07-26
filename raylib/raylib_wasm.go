@@ -158,6 +158,14 @@ func SetClipPlanes(nearPlane, farPlane float64) {
 	wasm.Free(fl...)
 }
 
+var drawRenderBatchActive = wasm.Proc("rlDrawRenderBatchActive")
+
+// DrawRenderBatchActive - Update and draw internal render batch
+func DrawRenderBatchActive() {
+	_, fl := drawRenderBatchActive.Call()
+	wasm.Free(fl...)
+}
+
 func DisableBackfaceCulling() {
 	_, fl := disableBackfaceCulling.Call()
 	wasm.Free(fl...)

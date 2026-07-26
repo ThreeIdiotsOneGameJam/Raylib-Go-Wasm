@@ -120,8 +120,13 @@ func CopyValueToC[T any](srcValue *T) (Ptr, func()) {
 //
 // NOTE: Value MUST be a slice
 func CopySliceToC[Slice ~[]E, E any](s Slice) (Ptr, func()) {
+	if len(s) == 0 {
+		return 0, func() {}
+	}
+
 	// size of the slice's underlying array in bytes
-	sliceSize := Ptr(unsafe.Sizeof(s[:1][0])) * Ptr(len(s))
+	var element E
+	sliceSize := Ptr(unsafe.Sizeof(element)) * Ptr(len(s))
 	// allocate C array to hold Value
 	dstCptr := malloc(sliceSize)
 	// copy underlying array memory to C
@@ -147,7 +152,13 @@ func CopySliceToGo[Slice ~[]E, E any](src Ptr, dst Slice) {
 	if occupiedSize == 0 {
 		occupiedSize = cap(dst)
 	}
-	size := Ptr(unsafe.Sizeof(dst[0])) * Ptr(occupiedSize)
+	if occupiedSize == 0 {
+		return
+	}
+
+	dst = dst[:occupiedSize]
+	var element E
+	size := Ptr(unsafe.Sizeof(element)) * Ptr(occupiedSize)
 	dstPtr := unsafe.SliceData(dst)
 	_copyToGo(unsafe.Pointer(dstPtr), size, src)
 }
